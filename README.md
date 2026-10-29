@@ -5,13 +5,13 @@ Build cargo projects with colcon.
 ## Usage
 Packages need to have a `package.xml` in addition to `Cargo.toml`. You should see such packages classified as `ament_cargo` in the output of `colcon list`. If they are classified as `ros.ament_cargo` instead, the `colcon-ros-cargo` extension has not been found by `colcon`. Make sure that you have built and loaded (`source install/setup.bash`) the extension. 
 
-Simply list dependencies (other `ament_cargo` packages or message packages) in `Cargo.toml` and `package.xml` as if they were hosted on crates.io. `colcon-ros-cargo` will find the dependencies and create a `.cargo/config.toml` file that helps cargo find these packages.
+Simply list dependencies (other `ament_cargo` packages or message packages) in `Cargo.toml` and `package.xml` as if they were hosted on crates.io. `colcon-ros-cargo` will find the dependencies and write them into a cargo config file in the package's build directory (`build/<package>/cargo_config.toml`), which it passes to cargo with `--config`. It does not write a `.cargo/config.toml` into the workspace, so other Cargo projects in the workspace are not affected.
 
 Extra arguments to `cargo` can be passed via the `--cargo-args` option, e.g. `colcon build --cargo-args --release`.
 
 After building, run binaries with `ros2 run`.
 
-`colcon-ros-cargo` also aims to support using `cargo` directly as the primary build tool. Just build with `colcon` once, to make sure all non-Cargo dependencies are built and the `.cargo/config.toml` file exists, and then using `cargo` will just work – `cargo build`, `cargo clippy`, `cargo doc`, etc. When the dependency graph changes, rebuild with `colcon`.
+`colcon-ros-cargo` also aims to support using `cargo` directly as the primary build tool. Just build with `colcon` once, to make sure all non-Cargo dependencies are built and the cargo config file exists, and then pass it to `cargo` – `cargo build --config build/<package>/cargo_config.toml`, and likewise for `cargo clippy`, `cargo doc`, etc. When the dependency graph changes, rebuild with `colcon`.
 
 
 ## Limitations

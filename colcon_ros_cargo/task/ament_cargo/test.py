@@ -3,6 +3,7 @@
 from colcon_cargo.task.cargo.test import CargoTestTask
 from colcon_core.plugin_system import satisfies_version
 from colcon_core.task import TaskExtensionPoint
+from colcon_ros_cargo.task.ament_cargo.build import cargo_config_path
 
 
 class AmentCargoTestTask(CargoTestTask):
@@ -19,3 +20,8 @@ class AmentCargoTestTask(CargoTestTask):
 
     def add_arguments(self, *, parser):  # noqa: D102
         pass
+
+    def _test_cmd(self, cargo_args):
+        # The build left the patched dependency paths in the build base.
+        config = str(cargo_config_path(self.context.args.build_base))
+        return super()._test_cmd(['--config', config] + cargo_args)

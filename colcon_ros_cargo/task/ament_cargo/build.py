@@ -29,8 +29,11 @@ class AmentCargoBuildTask(CargoBuildTask):
 
     That means, when building a Cargo package, all the packages it depends on
     need to be resolved to full paths, and those need to be written into the
-    Cargo.toml, or alternatively into a [patch] section of a .cargo/config.toml
-    file. Here the latter approach is used.
+    Cargo.toml, or alternatively into a [patch] section of a cargo config
+    file. Here the latter approach is used. The file is written into the
+    package's build base and passed with --config, because a
+    .cargo/config.toml in the working directory would also patch unrelated
+    Cargo projects below it.
     """
 
     def __init__(self):  # noqa: D107
@@ -43,8 +46,8 @@ class AmentCargoBuildTask(CargoBuildTask):
             action='store_true',
             help='Look up dependencies in the workspace directory. '
             'By default, dependencies are looked up only in the installation '
-            'prefixes. This option is useful for setting up a '
-            '.cargo/config.toml for subsequent builds with cargo.')
+            'prefixes. This option is useful for reusing the generated '
+            'cargo config for subsequent builds with cargo --config.')
 
     def _prepare(self, env, additional_hooks):
         args = self.context.args
@@ -66,7 +69,7 @@ class AmentCargoBuildTask(CargoBuildTask):
         # Hence, the installed package paths need to be accumulated.
         new_package_paths.update(package_paths)
         package_paths = new_package_paths
-        write_cargo_config_toml(package_paths)
+        write_cargo_config_toml(cargo_config_path(args.build_base), package_paths)  # noqa: E501
 
         additional_hooks += create_environment_hook(
             'ament_prefix_path',
@@ -84,6 +87,7 @@ class AmentCargoBuildTask(CargoBuildTask):
             CARGO_EXECUTABLE, 'ament-build',
             '--install-base', args.install_base,
             '--',
+            '--config', str(cargo_config_path(args.build_base)),
             '--manifest-path', manifest_path,
             '--target-dir', args.build_base,
             '--quiet'
@@ -94,17 +98,21 @@ class AmentCargoBuildTask(CargoBuildTask):
         pass
 
 
-def write_cargo_config_toml(package_paths):
-    """Write the resolved package paths to config.toml.
+def cargo_config_path(build_base):
+    """Return the cargo config file of the package in build_base."""
+    return Path(build_base).resolve() / 'cargo_config.toml'
 
+
+def write_cargo_config_toml(config_file, package_paths):
+    """Write the resolved package paths to a cargo config file.
+
+    :param config_file: The cargo config file to write
     :param package_paths: A mapping of package names to paths
     """
     patches = {pkg: {'path': str(path)} for pkg, path in package_paths.items()}
     content = {'patch': {'crates-io': patches}}
-    config_dir = Path.cwd() / '.cargo'
-    config_dir.mkdir(exist_ok=True)
-    cargo_config_toml_out = config_dir / 'config.toml'
-    with cargo_config_toml_out.open('w') as toml_file:
+    config_file.parent.mkdir(parents=True, exist_ok=True)
+    with config_file.open('w') as toml_file:
         toml.dump(content, toml_file)
 
 
